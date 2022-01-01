@@ -1,6 +1,7 @@
 /* eslint-disable linebreak-style */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable no-console */
+/* eslint-disable object-curly-newline */
 
 const ClientError = require('../../exceptions/ClientError');
 
@@ -20,8 +21,9 @@ class NotesHandler {
     try {
       this._validator.validateNotePayload(request.payload);
       const { title = 'untitled', body, tags } = request.payload;
+      const { id: credentialId } = request.auth.credentials;
 
-      const noteId = await this._service.add({ title, body, tags });
+      const noteId = await this._service.add({ title, body, tags, owner: credentialId });
 
       const response = h.response({
         status: 'success',
@@ -53,8 +55,9 @@ class NotesHandler {
     }
   }
 
-  async getNotesHandler() {
-    const notes = await this._service.getAll();
+  async getNotesHandler(request) {
+    const { id: credentialId } = request.auth.credentials;
+    const notes = await this._service.getAll(credentialId);
     return {
       status: 'success',
       data: {
@@ -66,6 +69,8 @@ class NotesHandler {
   async getNoteByIdHandler(request, h) {
     try {
       const { id } = request.params;
+      const { id: credentialId } = request.auth.credentials;
+      await this._service.verifyNoteOwner(id, credentialId);
       const note = await this._service.getById(id);
       return {
         status: 'success',
@@ -98,7 +103,8 @@ class NotesHandler {
     try {
       this._validator.validateNotePayload(request.payload);
       const { id } = request.params;
-
+      const { id: credentialId } = request.auth.credentials;
+      await this._service.verifyNoteOwner(id, credentialId);
       await this._service.updateById(id, request.payload);
 
       return {
@@ -129,6 +135,8 @@ class NotesHandler {
   async deleteNoteByIdHandler(request, h) {
     try {
       const { id } = request.params;
+      const { id: credentialId } = request.auth.credentials;
+      await this._service.verifyNoteOwner(id, credentialId);
       await this._service.deleteById(id);
 
       return {
